@@ -1,0 +1,30 @@
+name: kitt
+description: >-
+  Compagnon vocal local inspiré de K2000 — pipeline vocal on-device
+  (wake-word → STT → contexte → LLM → TTS → audio), UI Flame.
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: '>=3.4.0 <4.0.0'
+  flutter: '>=3.22.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  # Rendu animé (scanner K2000 + modulateur vocal)
+  flame: ^1.18.0
+  # Gestion d'état
+  flutter_riverpod: ^2.5.1
+  # Identifiants
+  ulid: ^2.0.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/persona/
