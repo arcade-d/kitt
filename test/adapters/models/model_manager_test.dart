@@ -19,8 +19,10 @@ void main() {
 
     test('ttsModel : dossier HF récursif espeak-ng-data', () {
       expect(ttsModel.hfSubdir, 'espeak-ng-data');
-      expect(ttsModel.files.any((f) => f.localPath == '$ttsDirName/model.onnx'),
-          isTrue,);
+      expect(
+        ttsModel.files.any((f) => f.localPath == '$ttsDirName/model.onnx'),
+        isTrue,
+      );
     });
 
     test('parseHfTree : JSON tree -> entrées typées', () {
@@ -34,7 +36,8 @@ void main() {
     });
 
     test('ModelStatus.allReady', () {
-      expect(const ModelStatus(sttReady: true, ttsReady: true).allReady, isTrue);
+      expect(
+          const ModelStatus(sttReady: true, ttsReady: true).allReady, isTrue);
       expect(
         const ModelStatus(sttReady: true, ttsReady: false).allReady,
         isFalse,
@@ -75,7 +78,8 @@ void main() {
       expect(mm.isSttModelAvailable, isTrue);
     });
 
-    test('downloadModel saute les fichiers déjà présents (aucun réseau)', () async {
+    test('downloadModel saute les fichiers déjà présents (aucun réseau)',
+        () async {
       final mm = make(
         client: MockClient(
           (_) async => throw StateError('ne doit pas télécharger'),

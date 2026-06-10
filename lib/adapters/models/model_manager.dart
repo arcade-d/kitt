@@ -158,7 +158,8 @@ class ModelManager {
     final request = http.Request('GET', Uri.parse(url));
     final response = await _client.send(request);
     if (response.statusCode != 200) {
-      throw Exception('Téléchargement échoué: HTTP ${response.statusCode} ($url)');
+      throw Exception(
+          'Téléchargement échoué: HTTP ${response.statusCode} ($url)');
     }
     final tmpPath = '$targetPath.tmp';
     final tmpFile = File(tmpPath);
