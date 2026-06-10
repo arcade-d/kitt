@@ -26,7 +26,7 @@ import 'pipeline_state.dart';
 
 /// Mode des adapters, fixé au build : `--dart-define=KITT_ADAPTERS=real|mock`.
 /// Défaut : `mock` (tests et CI tournent sans natif ni modèles).
-const bool _useRealAdapters =
+const bool kUseRealAdapters =
     String.fromEnvironment('KITT_ADAPTERS', defaultValue: 'mock') == 'real';
 
 /// Faisceau des adapters vocaux résolus (mock ou réels) pour un build donné.
@@ -64,7 +64,7 @@ final modelManagerProvider = FutureProvider<ModelManager>((ref) async {
 /// Sélectionne mock ou réel. En mode réel, attend le `ModelManager` pour les
 /// chemins STT/TTS.
 final adaptersProvider = FutureProvider<VoiceAdapters>((ref) async {
-  if (_useRealAdapters) {
+  if (kUseRealAdapters) {
     final mm = await ref.watch(modelManagerProvider.future);
     return VoiceAdapters(
       stt: SherpaStt(mm.sttModelDir),
@@ -122,4 +122,11 @@ final pipelineStateProvider = StreamProvider<PipelineState>((ref) async* {
 final audioLevelProvider = StreamProvider<double>((ref) async* {
   final adapters = await ref.watch(adaptersProvider.future);
   yield* adapters.audioIn.audioLevel;
+});
+
+/// Vrai si les modèles requis sont présents (toujours vrai en mode mock).
+final modelsReadyProvider = FutureProvider<bool>((ref) async {
+  if (!kUseRealAdapters) return true;
+  final mm = await ref.watch(modelManagerProvider.future);
+  return mm.getStatus().allReady;
 });

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'ui/companion_screen.dart';
+import 'ui/bootstrap_gate.dart';
 
 void main() {
   runApp(const ProviderScope(child: KittApp()));
@@ -18,7 +18,7 @@ class KittApp extends StatelessWidget {
       theme: ThemeData.dark(
         useMaterial3: true,
       ).copyWith(scaffoldBackgroundColor: Colors.black),
-      home: const CompanionScreen(),
+      home: const BootstrapGate(),
     );
   }
 }
