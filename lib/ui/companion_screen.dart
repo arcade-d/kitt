@@ -52,6 +52,14 @@ class _CompanionScreenState extends ConsumerState<CompanionScreen> {
     try {
       final adapters = await ref.read(adaptersProvider.future);
       final stream = await adapters.audioIn.startStream(sampleRate: 16000);
+      if (!mounted || !_recording) {
+        try {
+          await adapters.audioIn.stop();
+        } catch (_) {
+          // Best-effort stop on cold-start race — ignore errors.
+        }
+        return;
+      }
       _capSub = stream.listen(
         (final List<double> chunk) => _captured.addAll(chunk),
         onError: (Object e) {
@@ -110,7 +118,15 @@ class _CompanionScreenState extends ConsumerState<CompanionScreen> {
     }
   }
 
-  void _handleError(Object e) {
+  Future<void> _handleError(Object e) async {
+    await _capSub?.cancel();
+    _capSub = null;
+    try {
+      final adapters = await ref.read(adaptersProvider.future);
+      await adapters.audioIn.stop();
+    } catch (_) {
+      // Best-effort stop on stream error — ignore errors.
+    }
     if (mounted) {
       setState(() {
         _recording = false;
