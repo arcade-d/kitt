@@ -1,5 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../adapters/audio/just_audio_out.dart';
+import '../adapters/audio/record_audio_in.dart';
 import '../adapters/memory/in_memory_store.dart';
 import '../adapters/mock/mock_audio_in.dart';
 import '../adapters/mock/mock_audio_out.dart';
@@ -7,6 +9,9 @@ import '../adapters/mock/mock_llm.dart';
 import '../adapters/mock/mock_stt.dart';
 import '../adapters/mock/mock_tts.dart';
 import '../adapters/mock/mock_wake_word.dart';
+import '../adapters/models/model_manager.dart';
+import '../adapters/sherpa/sherpa_stt.dart';
+import '../adapters/sherpa/sherpa_tts.dart';
 import '../domain/persona.dart';
 import '../ports/audio_in_port.dart';
 import '../ports/audio_out_port.dart';
@@ -18,17 +23,66 @@ import '../ports/wake_word_port.dart';
 import 'companion_pipeline.dart';
 import 'pipeline_state.dart';
 
-/// Câblage des ports → adapters. Aujourd'hui : adapters MOCK.
-/// Remplacer ces providers par les adapters Tachikoma (STT/LLM/TTS réels)
-/// branchera tout le pipeline sans toucher au domaine (cf. débrief §6.2).
+/// Mode des adapters, fixé au build : `--dart-define=KITT_ADAPTERS=real|mock`.
+/// Défaut : `mock` (tests et CI tournent sans natif ni modèles).
+const bool _useRealAdapters =
+    String.fromEnvironment('KITT_ADAPTERS', defaultValue: 'mock') == 'real';
+
+/// Faisceau des adapters vocaux résolus (mock ou réels) pour un build donné.
+/// Le LLM reste mock dans ce lot (l'adapter llamadart/CroissantLLM viendra dans
+/// un lot ultérieur).
+class VoiceAdapters {
+  const VoiceAdapters({
+    required this.stt,
+    required this.llm,
+    required this.tts,
+    required this.audioIn,
+    required this.audioOut,
+    required this.memory,
+  });
+
+  final SttPort stt;
+  final LlmPort llm;
+  final TtsPort tts;
+  final AudioInPort audioIn;
+  final AudioOutPort audioOut;
+  final MemoryStorePort memory;
+}
 
 final wakeWordProvider = Provider<WakeWordPort>((ref) => MockWakeWord());
-final sttProvider = Provider<SttPort>((ref) => MockStt());
-final llmProvider = Provider<LlmPort>((ref) => MockLlm());
-final ttsProvider = Provider<TtsPort>((ref) => MockTts());
-final audioOutProvider = Provider<AudioOutPort>((ref) => MockAudioOut());
-final audioInProvider = Provider<AudioInPort>((ref) => MockAudioIn());
-final memoryProvider = Provider<MemoryStorePort>((ref) => InMemoryStore());
+
+/// `ModelManager` initialisé (résout les dossiers de modèles). Watché seulement
+/// en mode réel.
+final modelManagerProvider = FutureProvider<ModelManager>((ref) async {
+  final mm = ModelManager();
+  await mm.initialize();
+  ref.onDispose(mm.dispose);
+  return mm;
+});
+
+/// Sélectionne mock ou réel. En mode réel, attend le `ModelManager` pour les
+/// chemins STT/TTS.
+final adaptersProvider = FutureProvider<VoiceAdapters>((ref) async {
+  if (_useRealAdapters) {
+    final mm = await ref.watch(modelManagerProvider.future);
+    return VoiceAdapters(
+      stt: SherpaStt(mm.sttModelDir),
+      llm: MockLlm(),
+      tts: SherpaTts(mm.ttsModelDir),
+      audioIn: RecordAudioIn(),
+      audioOut: JustAudioOut(),
+      memory: InMemoryStore(),
+    );
+  }
+  return VoiceAdapters(
+    stt: MockStt(),
+    llm: MockLlm(),
+    tts: MockTts(),
+    audioIn: MockAudioIn(),
+    audioOut: MockAudioOut(),
+    memory: InMemoryStore(),
+  );
+});
 
 /// Persona chargée depuis les assets, avec repli si l'asset manque.
 final personaProvider = FutureProvider<Persona>((ref) async {
@@ -39,16 +93,17 @@ final personaProvider = FutureProvider<Persona>((ref) async {
   }
 });
 
-/// Pipeline companion assemblé. Disponible une fois la persona chargée.
+/// Pipeline companion assemblé. Disponible une fois persona + adapters prêts.
 final pipelineProvider = FutureProvider<CompanionPipeline>((ref) async {
-  final Persona persona = await ref.watch(personaProvider.future);
-  final CompanionPipeline pipeline = CompanionPipeline(
+  final persona = await ref.watch(personaProvider.future);
+  final adapters = await ref.watch(adaptersProvider.future);
+  final pipeline = CompanionPipeline(
     persona: persona,
-    stt: ref.watch(sttProvider),
-    llm: ref.watch(llmProvider),
-    tts: ref.watch(ttsProvider),
-    audioOut: ref.watch(audioOutProvider),
-    memory: ref.watch(memoryProvider),
+    stt: adapters.stt,
+    llm: adapters.llm,
+    tts: adapters.tts,
+    audioOut: adapters.audioOut,
+    memory: adapters.memory,
   );
   await pipeline.initialize();
   ref.onDispose(pipeline.dispose);
@@ -57,12 +112,13 @@ final pipelineProvider = FutureProvider<CompanionPipeline>((ref) async {
 
 /// État courant du pipeline pour l'UI.
 final pipelineStateProvider = StreamProvider<PipelineState>((ref) async* {
-  final CompanionPipeline pipeline = await ref.watch(pipelineProvider.future);
+  final pipeline = await ref.watch(pipelineProvider.future);
   yield pipeline.state;
   yield* pipeline.states;
 });
 
 /// Niveau RMS du micro pour le modulateur vocal.
-final audioLevelProvider = StreamProvider<double>((ref) {
-  return ref.watch(audioInProvider).audioLevel;
+final audioLevelProvider = StreamProvider<double>((ref) async* {
+  final adapters = await ref.watch(adaptersProvider.future);
+  yield* adapters.audioIn.audioLevel;
 });
