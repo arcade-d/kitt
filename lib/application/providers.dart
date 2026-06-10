@@ -30,8 +30,8 @@ const bool _useRealAdapters =
     String.fromEnvironment('KITT_ADAPTERS', defaultValue: 'mock') == 'real';
 
 /// Faisceau des adapters vocaux résolus (mock ou réels) pour un build donné.
-/// Le LLM reste mock dans ce lot (l'adapter llamadart/CroissantLLM viendra dans
-/// un lot ultérieur).
+/// En mode réel : sherpa (STT/TTS), record/just_audio (audio) et CroissantLLM
+/// (llamadart) ; en mode mock, des doubles déterministes.
 class VoiceAdapters {
   const VoiceAdapters({
     required this.stt,
