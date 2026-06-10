@@ -139,5 +139,28 @@ void main() {
       expect(mm.isLlmModelAvailable, isTrue);
       expect(mm.getStatus().llmReady, isTrue);
     });
+
+    test('downloadLlmModel : saute si déjà présent (aucun réseau)', () async {
+      final mm = make(
+        client: MockClient(
+          (_) async => throw StateError('ne doit pas télécharger'),
+        ),
+      );
+      await mm.initialize();
+      File(mm.llmModelPath).writeAsStringSync('present');
+      final progress = <double>[];
+      await mm.downloadLlmModel(onProgress: progress.add);
+      expect(progress.last, 1.0);
+    });
+
+    test('downloadLlmModel : fallback mono-flux écrit le GGUF', () async {
+      // Le serveur répond 200 (pas 206) au probe Range → pas de chunks → mono-flux.
+      final mm = make(
+        client: MockClient((_) async => http.Response('GGUF', 200)),
+      );
+      await mm.initialize();
+      await mm.downloadLlmModel(onProgress: (_) {});
+      expect(File(mm.llmModelPath).readAsStringSync(), 'GGUF');
+    });
   });
 }
