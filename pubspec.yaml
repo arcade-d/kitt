@@ -25,6 +25,8 @@ dependencies:
   path_provider: ^2.1.5
   permission_handler: ^11.4.0
   http: ^1.6.0
+  # LLM local (CroissantLLM GGUF via llama.cpp, en isolate)
+  llamadart: ^0.6.9
 
 dev_dependencies:
   flutter_test:
