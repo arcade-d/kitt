@@ -2,7 +2,8 @@ import 'dart:math' as math;
 
 import 'package:flame/components.dart';
 import 'package:flame/game.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 
 import '../application/pipeline_state.dart';
 
@@ -42,19 +43,12 @@ class ScannerComponent extends PositionComponent
   static const Color _red = Color(0xFFFF1A1A);
   double _t = 0;
 
-  double get _speed {
-    switch (stateListenable.value) {
-      case PipelineState.idle:
-        return 0.6; // veille : balayage lent
-      case PipelineState.listening:
-      case PipelineState.clarifying:
-        return 2.4; // attentif
-      case PipelineState.thinking:
-        return 3.6; // réflexion : rapide
-      case PipelineState.responding:
-        return 1.8;
-    }
-  }
+  double get _speed => switch (stateListenable.value) {
+        PipelineState.idle => 0.6, // veille : balayage lent
+        PipelineState.listening || PipelineState.clarifying => 2.4, // attentif
+        PipelineState.thinking => 3.6, // réflexion : rapide
+        PipelineState.responding => 1.8,
+      };
 
   @override
   void update(double dt) {
@@ -105,8 +99,7 @@ class ModulatorComponent extends PositionComponent
   void update(double dt) {
     _phase += dt * 6;
     final double level = levelListenable.value.clamp(0.0, 1.0);
-    final bool active =
-        stateListenable.value == PipelineState.listening ||
+    final bool active = stateListenable.value == PipelineState.listening ||
         stateListenable.value == PipelineState.responding;
     for (int i = 0; i < _bars; i++) {
       final double target = active

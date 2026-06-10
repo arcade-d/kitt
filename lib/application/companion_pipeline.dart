@@ -29,14 +29,14 @@ class CompanionPipeline {
     ConversationManager? conversation,
     ContextBuilder? contextBuilder,
     DialoguePolicy? policy,
-  }) : _stt = stt,
-       _llm = llm,
-       _tts = tts,
-       _audioOut = audioOut,
-       _memory = memory,
-       conversation = conversation ?? ConversationManager(),
-       contextBuilder = contextBuilder ?? const ContextBuilder(),
-       policy = policy ?? const DialoguePolicy() {
+  })  : _stt = stt,
+        _llm = llm,
+        _tts = tts,
+        _audioOut = audioOut,
+        _memory = memory,
+        conversation = conversation ?? ConversationManager(),
+        contextBuilder = contextBuilder ?? const ContextBuilder(),
+        policy = policy ?? const DialoguePolicy() {
     _llm.systemPrompt = persona.systemPrompt;
   }
 
@@ -52,8 +52,10 @@ class CompanionPipeline {
 
   final ConversationStateMachine _machine = ConversationStateMachine();
 
+  // sync: les changements d'état sont livrés au listener au moment exact de la
+  // transition, ce qui rend l'observation déterministe (UI et tests).
   final StreamController<PipelineState> _states =
-      StreamController<PipelineState>.broadcast();
+      StreamController<PipelineState>.broadcast(sync: true);
   final StreamController<String> _partial =
       StreamController<String>.broadcast();
 

@@ -6,7 +6,7 @@ import 'package:kitt/domain/turn.dart';
 
 void main() {
   group('ContextBuilder', () {
-    final persona = Persona.fallback;
+    const persona = Persona.fallback;
 
     test('assemble system + historique + énoncé courant', () {
       const builder = ContextBuilder();

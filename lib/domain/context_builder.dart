@@ -52,9 +52,8 @@ class ContextBuilder {
     String? rollingSummary,
     String? memoryContext,
   }) {
-    final String systemPrompt = persona.isValid
-        ? persona.systemPrompt
-        : Persona.fallback.systemPrompt;
+    final String systemPrompt =
+        persona.isValid ? persona.systemPrompt : Persona.fallback.systemPrompt;
 
     // Fenêtre courte : on part des plus récents et on remonte tant qu'on tient
     // dans le budget (et la limite de tours).
@@ -62,8 +61,7 @@ class ContextBuilder {
         ? history.sublist(history.length - maxHistoryTurns)
         : List<Turn>.of(history);
 
-    final int fixedCost =
-        estimateTokens(systemPrompt) +
+    final int fixedCost = estimateTokens(systemPrompt) +
         estimateTokens(currentUtterance) +
         estimateTokens(rollingSummary ?? '') +
         estimateTokens(memoryContext ?? '');
