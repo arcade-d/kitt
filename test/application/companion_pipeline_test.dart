@@ -21,41 +21,55 @@ CompanionPipeline buildPipeline({MockStt? stt, MockLlm? llm}) {
 
 void main() {
   group('CompanionPipeline', () {
-    test('un tour nominal traverse listening→thinking→responding→idle', () async {
-      final pipeline = buildPipeline();
-      final states = <PipelineState>[];
-      final sub = pipeline.states.listen(states.add);
+    test(
+      'un tour nominal traverse listening→thinking→responding→idle',
+      () async {
+        final pipeline = buildPipeline();
+        final states = <PipelineState>[];
+        final sub = pipeline.states.listen(states.add);
 
-      final reply = await pipeline.runTurn(List<double>.filled(160, 0), 16000);
+        final reply = await pipeline.runTurn(
+          List<double>.filled(160, 0),
+          16000,
+        );
 
-      expect(reply, 'Tout est sous contrôle.');
-      expect(states, containsAllInOrder(<PipelineState>[
-        PipelineState.listening,
-        PipelineState.thinking,
-        PipelineState.responding,
-        PipelineState.idle,
-      ]));
-      expect(pipeline.state, PipelineState.idle);
-      expect(pipeline.conversation.length, 2); // user + assistant
-      await sub.cancel();
-      await pipeline.dispose();
-    });
+        expect(reply, 'Tout est sous contrôle.');
+        expect(
+          states,
+          containsAllInOrder(<PipelineState>[
+            PipelineState.listening,
+            PipelineState.thinking,
+            PipelineState.responding,
+            PipelineState.idle,
+          ]),
+        );
+        expect(pipeline.state, PipelineState.idle);
+        expect(pipeline.conversation.length, 2); // user + assistant
+        await sub.cancel();
+        await pipeline.dispose();
+      },
+    );
 
-    test('énoncé inexploitable déclenche la clarification et ne répond pas',
-        () async {
-      final pipeline = buildPipeline(stt: MockStt(cannedText: ''));
-      final states = <PipelineState>[];
-      final sub = pipeline.states.listen(states.add);
+    test(
+      'énoncé inexploitable déclenche la clarification et ne répond pas',
+      () async {
+        final pipeline = buildPipeline(stt: MockStt(cannedText: ''));
+        final states = <PipelineState>[];
+        final sub = pipeline.states.listen(states.add);
 
-      final reply = await pipeline.runTurn(List<double>.filled(160, 0), 16000);
+        final reply = await pipeline.runTurn(
+          List<double>.filled(160, 0),
+          16000,
+        );
 
-      expect(reply, isNull);
-      expect(states, contains(PipelineState.clarifying));
-      expect(pipeline.state, PipelineState.idle);
-      expect(pipeline.conversation.isEmpty, isTrue);
-      await sub.cancel();
-      await pipeline.dispose();
-    });
+        expect(reply, isNull);
+        expect(states, contains(PipelineState.clarifying));
+        expect(pipeline.state, PipelineState.idle);
+        expect(pipeline.conversation.isEmpty, isTrue);
+        await sub.cancel();
+        await pipeline.dispose();
+      },
+    );
 
     test('faible confiance STT déclenche aussi la clarification', () async {
       final pipeline = buildPipeline(

@@ -33,7 +33,8 @@ class KittGame extends FlameGame {
 }
 
 /// Le scanner rouge balayant horizontalement (signature K2000).
-class ScannerComponent extends PositionComponent with HasGameReference<KittGame> {
+class ScannerComponent extends PositionComponent
+    with HasGameReference<KittGame> {
   ScannerComponent({required this.stateListenable});
 
   final ValueListenable<PipelineState> stateListenable;
@@ -104,7 +105,8 @@ class ModulatorComponent extends PositionComponent
   void update(double dt) {
     _phase += dt * 6;
     final double level = levelListenable.value.clamp(0.0, 1.0);
-    final bool active = stateListenable.value == PipelineState.listening ||
+    final bool active =
+        stateListenable.value == PipelineState.listening ||
         stateListenable.value == PipelineState.responding;
     for (int i = 0; i < _bars; i++) {
       final double target = active

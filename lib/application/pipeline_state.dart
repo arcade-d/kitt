@@ -2,13 +2,7 @@
 ///
 /// Tachikoma expose `{ idle, listening, processing, speaking }` — proche mais
 /// sans `clarifying` ni transition `barge-in`. Voici la version complète.
-enum PipelineState {
-  idle,
-  listening,
-  thinking,
-  responding,
-  clarifying,
-}
+enum PipelineState { idle, listening, thinking, responding, clarifying }
 
 /// Déclencheurs des transitions.
 enum PipelineEvent {
@@ -40,9 +34,7 @@ class ConversationStateMachine {
   PipelineState get state => _state;
 
   static const Map<PipelineState, Map<PipelineEvent, PipelineState>> _table = {
-    PipelineState.idle: {
-      PipelineEvent.wake: PipelineState.listening,
-    },
+    PipelineState.idle: {PipelineEvent.wake: PipelineState.listening},
     PipelineState.listening: {
       PipelineEvent.speechEnd: PipelineState.thinking,
       PipelineEvent.lowConfidence: PipelineState.clarifying,

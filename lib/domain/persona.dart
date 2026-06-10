@@ -20,8 +20,9 @@ class Persona {
 
   /// Charge la persona par défaut (KITT, FR) depuis les assets.
   static Future<Persona> loadDefault() async {
-    final String prompt =
-        await rootBundle.loadString('assets/persona/kitt_fr.md');
+    final String prompt = await rootBundle.loadString(
+      'assets/persona/kitt_fr.md',
+    );
     return Persona(name: 'KITT', systemPrompt: prompt.trim());
   }
 

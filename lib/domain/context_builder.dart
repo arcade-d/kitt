@@ -37,10 +37,7 @@ class BuiltContext {
 /// Tachikoma ne fournit qu'un `_historyContext()` brut (5 derniers tours) ; le
 /// budget de tokens et le résumé glissant sont à écrire ici (côté KITT).
 class ContextBuilder {
-  const ContextBuilder({
-    this.tokenBudget = 1800,
-    this.maxHistoryTurns = 8,
-  });
+  const ContextBuilder({this.tokenBudget = 1800, this.maxHistoryTurns = 8});
 
   /// Budget cible pour history+summary (laisse de la marge sous `contextSize: 2048`).
   final int tokenBudget;
@@ -65,7 +62,8 @@ class ContextBuilder {
         ? history.sublist(history.length - maxHistoryTurns)
         : List<Turn>.of(history);
 
-    final int fixedCost = estimateTokens(systemPrompt) +
+    final int fixedCost =
+        estimateTokens(systemPrompt) +
         estimateTokens(currentUtterance) +
         estimateTokens(rollingSummary ?? '') +
         estimateTokens(memoryContext ?? '');

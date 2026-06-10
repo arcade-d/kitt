@@ -15,9 +15,9 @@ class KittApp extends StatelessWidget {
     return MaterialApp(
       title: 'KITT',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData.dark(useMaterial3: true).copyWith(
-        scaffoldBackgroundColor: Colors.black,
-      ),
+      theme: ThemeData.dark(
+        useMaterial3: true,
+      ).copyWith(scaffoldBackgroundColor: Colors.black),
       home: const CompanionScreen(),
     );
   }

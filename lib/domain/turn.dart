@@ -13,8 +13,8 @@ class Turn {
     String? id,
     DateTime? at,
     this.sttConfidence,
-  })  : id = id ?? Ulid().toString(),
-        at = at ?? DateTime.now();
+  }) : id = id ?? Ulid().toString(),
+       at = at ?? DateTime.now();
 
   /// Identifiant ULID (triable lexicographiquement par date de création).
   final String id;
@@ -26,12 +26,12 @@ class Turn {
   final double? sttConfidence;
 
   Turn copyWith({String? content, double? sttConfidence}) => Turn(
-        id: id,
-        role: role,
-        content: content ?? this.content,
-        at: at,
-        sttConfidence: sttConfidence ?? this.sttConfidence,
-      );
+    id: id,
+    role: role,
+    content: content ?? this.content,
+    at: at,
+    sttConfidence: sttConfidence ?? this.sttConfidence,
+  );
 
   @override
   String toString() => 'Turn(${role.name}, "$content")';

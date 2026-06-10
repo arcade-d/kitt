@@ -31,16 +31,18 @@ class ConversationManager {
     return turn;
   }
 
-  Turn addUser(String content, {double? sttConfidence}) =>
-      add(Turn(role: Role.user, content: content, sttConfidence: sttConfidence));
+  Turn addUser(String content, {double? sttConfidence}) => add(
+    Turn(role: Role.user, content: content, sttConfidence: sttConfidence),
+  );
 
   Turn addAssistant(String content) =>
       add(Turn(role: Role.assistant, content: content));
 
   /// Les [n] derniers tours (hors `system`), du plus ancien au plus récent.
   List<Turn> recent(int n) {
-    final List<Turn> dialogue =
-        _turns.where((Turn t) => t.role != Role.system).toList();
+    final List<Turn> dialogue = _turns
+        .where((Turn t) => t.role != Role.system)
+        .toList();
     if (dialogue.length <= n) return dialogue;
     return dialogue.sublist(dialogue.length - n);
   }

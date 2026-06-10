@@ -16,8 +16,9 @@ class CompanionScreen extends ConsumerStatefulWidget {
 }
 
 class _CompanionScreenState extends ConsumerState<CompanionScreen> {
-  final ValueNotifier<PipelineState> _state =
-      ValueNotifier<PipelineState>(PipelineState.idle);
+  final ValueNotifier<PipelineState> _state = ValueNotifier<PipelineState>(
+    PipelineState.idle,
+  );
   final ValueNotifier<double> _level = ValueNotifier<double>(0);
   late final KittGame _game = KittGame(
     stateListenable: _state,

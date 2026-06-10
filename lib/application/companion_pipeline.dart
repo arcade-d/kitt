@@ -29,14 +29,14 @@ class CompanionPipeline {
     ConversationManager? conversation,
     ContextBuilder? contextBuilder,
     DialoguePolicy? policy,
-  })  : _stt = stt,
-        _llm = llm,
-        _tts = tts,
-        _audioOut = audioOut,
-        _memory = memory,
-        conversation = conversation ?? ConversationManager(),
-        contextBuilder = contextBuilder ?? const ContextBuilder(),
-        policy = policy ?? const DialoguePolicy() {
+  }) : _stt = stt,
+       _llm = llm,
+       _tts = tts,
+       _audioOut = audioOut,
+       _memory = memory,
+       conversation = conversation ?? ConversationManager(),
+       contextBuilder = contextBuilder ?? const ContextBuilder(),
+       policy = policy ?? const DialoguePolicy() {
     _llm.systemPrompt = persona.systemPrompt;
   }
 
@@ -96,7 +96,9 @@ class CompanionPipeline {
       if (!policy.isUsable(heard) || policy.shouldClarify(heard)) {
         _transition(PipelineEvent.lowConfidence); // → clarifying
         _transition(PipelineEvent.clarified); // → listening
-        _transition(PipelineEvent.reset); // → idle (le repli relancera l'écoute)
+        _transition(
+          PipelineEvent.reset,
+        ); // → idle (le repli relancera l'écoute)
         return null;
       }
 
