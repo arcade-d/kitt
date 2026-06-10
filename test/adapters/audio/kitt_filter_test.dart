@@ -31,7 +31,9 @@ void main() {
       List<double>.generate(128, (int i) => math.sin(i * 0.3)),
     );
     expect(
-        applyKittFilter(input, 22050), equals(applyKittFilter(input, 22050)));
+      applyKittFilter(input, 22050),
+      equals(applyKittFilter(input, 22050)),
+    );
   });
 
   test('signal non nul -> sortie non nulle', () {
