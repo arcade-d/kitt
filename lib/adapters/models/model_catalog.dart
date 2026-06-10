@@ -9,7 +9,8 @@ const String llmUrl =
 
 const String _hfSttBase =
     'https://huggingface.co/csukuangfj/sherpa-onnx-streaming-zipformer-fr-kroko-2025-08-06/resolve/main';
-const String _ttsHfRepo = 'csukuangfj/vits-piper-fr_FR-siwis-medium';
+// Voix FR masculine (gilles, mono-speaker sid 0) — cf. décision voix KITT.
+const String _ttsHfRepo = 'csukuangfj/vits-piper-fr_FR-gilles-low';
 const String _ttsHfBase = 'https://huggingface.co/$_ttsHfRepo/resolve/main';
 
 class ModelFile {
@@ -99,7 +100,7 @@ const ModelInfo ttsModel = ModelInfo(
   label: 'Text-to-Speech',
   files: [
     ModelFile(
-      url: '$_ttsHfBase/fr_FR-siwis-medium.onnx',
+      url: '$_ttsHfBase/fr_FR-gilles-low.onnx',
       localPath: '$ttsDirName/model.onnx',
     ),
     ModelFile(
