@@ -37,11 +37,19 @@ void main() {
 
     test('ModelStatus.allReady', () {
       expect(
-        const ModelStatus(sttReady: true, ttsReady: true).allReady,
+        const ModelStatus(
+          sttReady: true,
+          ttsReady: true,
+          llmReady: true,
+        ).allReady,
         isTrue,
       );
       expect(
-        const ModelStatus(sttReady: true, ttsReady: false).allReady,
+        const ModelStatus(
+          sttReady: true,
+          ttsReady: true,
+          llmReady: false,
+        ).allReady,
         isFalse,
       );
     });
@@ -119,6 +127,17 @@ void main() {
       );
       await mm.downloadModel(oneFile, onProgress: (_) {});
       expect(File('${mm.sttModelDir}/encoder.onnx').readAsStringSync(), 'DATA');
+    });
+
+    test('llmModelPath + isLlmModelAvailable + getStatus.llmReady', () async {
+      final mm = make();
+      await mm.initialize();
+      expect(mm.llmModelPath, '${tmp.path}/models/$llmFileName');
+      expect(mm.isLlmModelAvailable, isFalse);
+      expect(mm.getStatus().llmReady, isFalse);
+      File(mm.llmModelPath).writeAsStringSync('gguf');
+      expect(mm.isLlmModelAvailable, isTrue);
+      expect(mm.getStatus().llmReady, isTrue);
     });
   });
 }

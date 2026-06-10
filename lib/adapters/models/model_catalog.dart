@@ -3,6 +3,9 @@ import 'dart:convert';
 /// Dossiers locaux (sous `<models>/`) par modèle.
 const String sttDirName = 'stt';
 const String ttsDirName = 'tts';
+const String llmFileName = 'croissantllmchat-v0.1.Q4_K_M.gguf';
+const String llmUrl =
+    'https://huggingface.co/croissantllm/CroissantLLMChat-v0.1-GGUF/resolve/main/croissantllmchat-v0.1.Q4_K_M.gguf';
 
 const String _hfSttBase =
     'https://huggingface.co/csukuangfj/sherpa-onnx-streaming-zipformer-fr-kroko-2025-08-06/resolve/main';
@@ -35,12 +38,17 @@ class ModelInfo {
 }
 
 class ModelStatus {
-  const ModelStatus({required this.sttReady, required this.ttsReady});
+  const ModelStatus({
+    required this.sttReady,
+    required this.ttsReady,
+    required this.llmReady,
+  });
 
   final bool sttReady;
   final bool ttsReady;
+  final bool llmReady;
 
-  bool get allReady => sttReady && ttsReady;
+  bool get allReady => sttReady && ttsReady && llmReady;
 }
 
 class HfEntry {

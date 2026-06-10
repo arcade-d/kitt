@@ -35,6 +35,7 @@ class ModelManager {
   String get modelsDir => _modelsDir;
   String get sttModelDir => '$_modelsDir/$sttDirName';
   String get ttsModelDir => '$_modelsDir/$ttsDirName';
+  String get llmModelPath => '$_modelsDir/$llmFileName';
 
   bool get isSttModelAvailable =>
       File('$sttModelDir/encoder.onnx').existsSync() &&
@@ -46,9 +47,12 @@ class ModelManager {
       File('$ttsModelDir/espeak-ng-data/fr_dict').existsSync() &&
       File('$ttsModelDir/espeak-ng-data/phontab').existsSync();
 
+  bool get isLlmModelAvailable => File(llmModelPath).existsSync();
+
   ModelStatus getStatus() => ModelStatus(
         sttReady: isSttModelAvailable,
         ttsReady: isTtsModelAvailable,
+        llmReady: isLlmModelAvailable,
       );
 
   /// Supprime les `.tmp` laissés par un téléchargement interrompu.
