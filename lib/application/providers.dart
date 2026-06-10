@@ -10,6 +10,7 @@ import '../adapters/mock/mock_stt.dart';
 import '../adapters/mock/mock_tts.dart';
 import '../adapters/mock/mock_wake_word.dart';
 import '../adapters/models/model_manager.dart';
+import '../adapters/llama/llama_croissant_llm.dart';
 import '../adapters/sherpa/sherpa_stt.dart';
 import '../adapters/sherpa/sherpa_tts.dart';
 import '../domain/persona.dart';
@@ -67,7 +68,7 @@ final adaptersProvider = FutureProvider<VoiceAdapters>((ref) async {
     final mm = await ref.watch(modelManagerProvider.future);
     return VoiceAdapters(
       stt: SherpaStt(mm.sttModelDir),
-      llm: MockLlm(),
+      llm: LlamaCroissantLlm(mm.llmModelPath),
       tts: SherpaTts(mm.ttsModelDir),
       audioIn: RecordAudioIn(),
       audioOut: JustAudioOut(),
