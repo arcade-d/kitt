@@ -27,15 +27,15 @@ jobs:
       - run: flutter analyze
       - run: flutter test --coverage
 
-      # APK debug KITT (adapters réels, arm64 pour Pixel 7)
-      - name: Build debug APK
-        run: flutter build apk --debug --dart-define=KITT_ADAPTERS=real --target-platform android-arm64
+      # APK debug KITT (adapters réels, split par ABI -> arm64 seul pour Pixel 7)
+      - name: Build debug APK (arm64)
+        run: flutter build apk --debug --dart-define=KITT_ADAPTERS=real --split-per-abi
 
-      # Artefact téléchargeable, mis en avant
+      # Artefact téléchargeable, mis en avant (APK arm64-v8a pour Pixel 7)
       - name: Upload KITT debug APK
         uses: actions/upload-artifact@v4
         with:
           name: kitt-debug-apk
-          path: build/app/outputs/flutter-apk/app-debug.apk
+          path: build/app/outputs/flutter-apk/app-arm64-v8a-debug.apk
           if-no-files-found: error
           retention-days: 14
