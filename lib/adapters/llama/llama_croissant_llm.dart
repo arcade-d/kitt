@@ -204,6 +204,7 @@ class LlamaCroissantLlm implements LlmPort {
       _InitRequest(modelPath: modelPath, systemPrompt: _systemPrompt),
     );
     if (res.error != null) {
+      await _isolate.dispose();
       throw StateError('Échec init LLM: ${res.error}');
     }
     _initialized = true;
