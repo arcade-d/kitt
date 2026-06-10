@@ -1,4 +1,4 @@
-package dev.levilainpetit.kitt
+package co.delfour.kitt
 
 import io.flutter.embedding.android.FlutterActivity
 
