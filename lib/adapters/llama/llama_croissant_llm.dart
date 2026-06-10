@@ -65,8 +65,7 @@ Future<void> _llmWorker(SendPort mainPort) async {
   ChatSession? persistentSession;
 
   await for (final message in receivePort) {
-    final (request, SendPort replyPort) =
-        message as (Object, SendPort);
+    final (request, SendPort replyPort) = message as (Object, SendPort);
 
     if (request is _InitRequest) {
       try {
@@ -84,8 +83,7 @@ Future<void> _llmWorker(SendPort mainPort) async {
         if (request.useSession && persistentSession != null) {
           session = persistentSession;
         } else {
-          session = ChatSession(engine!)
-            ..systemPrompt = request.systemPrompt;
+          session = ChatSession(engine!)..systemPrompt = request.systemPrompt;
         }
         final buffer = StringBuffer();
         await for (final chunk in session.create(
