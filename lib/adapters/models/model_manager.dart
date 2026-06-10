@@ -255,12 +255,15 @@ class ModelManager {
             }
             final sink = chunkFile.openWrite(mode: FileMode.append);
             received[i] = chunkExisting;
-            await for (final data in response.stream) {
-              sink.add(data);
-              received[i] += data.length;
-              reportProgress();
+            try {
+              await for (final data in response.stream) {
+                sink.add(data);
+                received[i] += data.length;
+                reportProgress();
+              }
+            } finally {
+              await sink.close();
             }
-            await sink.close();
             return;
           } catch (e) {
             if (attempt == 2) rethrow;
@@ -278,13 +281,14 @@ class ModelManager {
     }
     await sink.close();
 
-    if (tmpFile.lengthSync() != fileSize) {
+    final actualSize = tmpFile.lengthSync();
+    if (actualSize != fileSize) {
       await tmpFile.delete();
       for (final f in chunkFiles) {
         if (f.existsSync()) await f.delete();
       }
       throw Exception(
-        'Taille téléchargée incohérente: ${tmpFile.lengthSync()} != $fileSize',
+        'Taille téléchargée incohérente: $actualSize != $fileSize',
       );
     }
 
