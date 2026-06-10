@@ -13,12 +13,16 @@ class RecordAudioIn implements AudioInPort {
   final AudioRecorder _recorder = AudioRecorder();
   final StreamController<double> _level = StreamController<double>.broadcast();
   StreamSubscription<Uint8List>? _sub;
+  StreamController<List<double>>? _dataController;
 
   @override
   Future<Stream<List<double>>> startStream({int sampleRate = 16000}) async {
     if (!await _recorder.hasPermission()) {
       throw StateError('Permission micro refusée');
     }
+    // Ferme proprement une capture précédente éventuelle avant d'en ouvrir une.
+    await _sub?.cancel();
+    await _dataController?.close();
     final raw = await _recorder.startStream(
       RecordConfig(
         encoder: AudioEncoder.pcm16bits,
@@ -30,6 +34,7 @@ class RecordAudioIn implements AudioInPort {
       ),
     );
     final controller = StreamController<List<double>>();
+    _dataController = controller;
     _sub = raw.listen(
       (bytes) {
         final samples = int16BytesToFloat32(bytes);
@@ -47,6 +52,8 @@ class RecordAudioIn implements AudioInPort {
     await _sub?.cancel();
     _sub = null;
     await _recorder.stop();
+    await _dataController?.close();
+    _dataController = null;
   }
 
   @override
