@@ -9,9 +9,10 @@ d'archi.
 
 App **Flutter/Dart**, Android, pipeline vocal **on-device** inspiré de K2000.
 Réutilise les briques de **Tachikoma** (app Flutter mono-package — pas de Rust,
-pas de FFII) : STT `sherpa_onnx` (zipformer FR streaming), LLM `llamadart`
-(CroissantLLM + Qwen2.5-1.5B, GGUF Q4_K_M), TTS `sherpa_onnx` (VITS/Piper FR).
-**Whisper et XTTS ne sont PAS utilisés.**
+pas de FFI) : STT `sherpa_onnx` (zipformer FR streaming), TTS `sherpa_onnx`
+(VITS/Piper FR). **LLM : choix KITT = CroissantLLM via `llamadart` (GGUF
+Q4_K_M, FR natif)** — divergence assumée : Tachikoma a depuis migré vers
+Gemma 4 (`flutter_gemma`, LiteRT-LM). **Whisper et XTTS ne sont PAS utilisés.**
 
 ## Conventions
 
@@ -26,7 +27,9 @@ pas de FFII) : STT `sherpa_onnx` (zipformer FR streaming), LLM `llamadart`
 ## État actuel (premier jet)
 
 - Domaine complet + machine d'états (`idle/listening/thinking/responding/clarifying`).
-- Ports définis ; **adapters MOCK** seulement (`lib/adapters/mock`, `memory`).
+- Ports définis. Adapters **mock** (`lib/adapters/mock`, `memory`) + **réels**
+  `lib/adapters/{sherpa,audio,models}` (STT/TTS sherpa, audio record/just_audio,
+  ModelManager) ; bascule `--dart-define=KITT_ADAPTERS=real|mock` (défaut mock).
 - `CompanionPipeline` orchestre un tour bout-en-bout sur les mocks.
 - UI Flame minimale (scanner + modulateur) + bouton repli.
 - CI GitHub Actions (`flutter analyze` + `test` + build APK de fumée).

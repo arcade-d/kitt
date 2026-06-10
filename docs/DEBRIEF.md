@@ -14,7 +14,17 @@ created_at: 2026-06-09T19:56:46.258760Z
 
 ## 0. Statut des sources
 
-Le dépôt `delfour-co/tachikoma` a été **lu** (branche `claude/kitt-tachikoma-integration-damjnt`). Les marqueurs `‹À CONFIRMER›` de la §6 ont été remplacés par les vrais noms/API/chemins, ou marqués **« absent du repo »** quand la brique n'existe pas. Toute affirmation technique de ce document est ancrée à un fichier réel de Tachikoma (chemin + ligne). Voir l'inventaire détaillé `TACHIKOMA-INVENTORY.md`.
+> **Mise à jour 2026-06-10.** Le LLM décrit ci-dessous (§4.3, §6, §8 :
+> `llamadart` + CroissantLLM + Qwen, dual-model) **n'est plus le code vivant de
+> Tachikoma** : Tachikoma a migré vers **Gemma 4 (`flutter_gemma`, LiteRT-LM)**
+> (branche `feat/gemma4-migration`, commit `0840801`). **Décision KITT :** garder
+> **CroissantLLM via `llamadart`** (FR natif, GGUF offline) — divergence
+> assumée. Le wrapper de référence est récupérable au commit `0840801^`
+> (`lib/services/llm_service.dart`, mono-isolate). STT et TTS (`sherpa_onnx`)
+> restent **inchangés** et confirmés. Voir le spec
+> `docs/superpowers/specs/2026-06-10-adapters-reels-sherpa-audio-design.md`.
+
+Le dépôt `delfour-co/tachikoma` a été **lu** (branche `claude/kitt-tachikoma-integration-damjnt`). Les marqueurs `‹À CONFIRMER›` de la §6 ont été remplacés par les vrais noms/API/chemins, ou marqués **« absent du repo »** quand la brique n'existe pas. Toute affirmation technique de ce document est ancrée à un fichier réel de Tachikoma (chemin + ligne). L'inventaire détaillé est intégré aux §4 et §6 de ce document.
 
 **Verdict de nature** : Tachikoma est une **app Flutter/Dart mono-package, ciblée Android**. Pas de Rust, pas de `Cargo.toml`, pas de FFI maison. Le code réutilisable vit dans `lib/services/**`. Les briques lourdes (LLM, STT/TTS) sont des packages pub.dev embarquant leurs binaires natifs.
 
@@ -219,7 +229,7 @@ Le proto actuel mappe déjà : `listening` = modulateur piloté par le micro ré
 - **Rapide (dette)** : git dep directe sur Tachikoma + import des fichiers `lib/services/**` tels quels (traîne `d4_dark_ds` et le couplage outils Android).
 - Pré-requis : reverrouiller `dart_agent_graph` (lock incohérent : `pubspec.yaml` = git `59db367`, `pubspec.lock:125-131` = path local `0.1.0`) ; externaliser la persona ; découpler le canal natif `tachikoma/tools`.
 
-Détail complet du mapping ports → symboles et de la stratégie : voir `TACHIKOMA-INVENTORY.md`.
+Détail complet du mapping ports → symboles et de la stratégie : §4 et §6.2 ci-dessus.
 
 ### 6.3 « Ce qu'on a mis en place dans Tachikoma pour améliorer la conversation » (résolu)
 - Orchestration **graphe d'agents** : **présent** — `dart_agent_graph` + `buildDualLlmGraph` (route→classify→filler→tool_call→tool_exec→chat), exécution `streamMulti` avec `StreamMode.{state,custom,debug}` (`lib/services/dual_llm_graph.dart`, `voice_pipeline.dart:232-343`).
@@ -280,7 +290,7 @@ jobs:
 - **Orchestration** : `dart_agent_graph` (git privé `delfour-co/dart-agent-graph`).
 - **Design system** : `d4_dark_ds` (git privé `delfour-co/d4-dark-ds`, v0.1.1).
 - **Persistance Tachikoma** : `SharedPreferences` (mémoire/flags) + JSON (`ConversationStore`). SQLite visé par KITT = **à ajouter** (absent de Tachikoma).
-- **Handoff** : ce doc + `TACHIKOMA-INVENTORY.md` + un `CLAUDE.md` par session.
+- **Handoff** : ce doc + un `CLAUDE.md` par session.
 
 ### Arborescence proposée (KITT)
 ```
@@ -320,4 +330,4 @@ kitt/
 - Android minimum / contraintes RAM (≈ 2,7 Go de modèles : STT + 2 LLM + TTS) ?
 - STT : garder le zipformer FR (sans confiance) ou passer à un moteur exposant un score (pour l'abstention) ?
 - Mémoire long terme (SQLite) dans le MVP ou plus tard ?
-- ~~Statut exact des libs Tachikoma~~ → **résolu** (cf. §4, §6, `TACHIKOMA-INVENTORY.md`). N'est plus bloquant.
+- ~~Statut exact des libs Tachikoma~~ → **résolu** (cf. §4, §6). N'est plus bloquant.
