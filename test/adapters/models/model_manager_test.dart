@@ -37,7 +37,9 @@ void main() {
 
     test('ModelStatus.allReady', () {
       expect(
-          const ModelStatus(sttReady: true, ttsReady: true).allReady, isTrue);
+        const ModelStatus(sttReady: true, ttsReady: true).allReady,
+        isTrue,
+      );
       expect(
         const ModelStatus(sttReady: true, ttsReady: false).allReady,
         isFalse,

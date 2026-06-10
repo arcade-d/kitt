@@ -159,7 +159,8 @@ class ModelManager {
     final response = await _client.send(request);
     if (response.statusCode != 200) {
       throw Exception(
-          'Téléchargement échoué: HTTP ${response.statusCode} ($url)');
+        'Téléchargement échoué: HTTP ${response.statusCode} ($url)',
+      );
     }
     final tmpPath = '$targetPath.tmp';
     final tmpFile = File(tmpPath);
