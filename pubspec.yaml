@@ -18,6 +18,13 @@ dependencies:
   flutter_riverpod: ^2.5.1
   # Identifiants
   ulid: ^2.0.0
+  # Pipeline vocal réel (adapters portés de Tachikoma)
+  sherpa_onnx: ^1.12.33
+  record: ^6.2.0
+  just_audio: ^0.10.5
+  path_provider: ^2.1.5
+  permission_handler: ^11.4.0
+  http: ^1.6.0
 
 dev_dependencies:
   flutter_test:
