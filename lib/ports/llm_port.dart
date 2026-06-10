@@ -4,6 +4,11 @@
 /// minimum conversationnel ; le routage TOOL/CHAT et la mémoire restent côté
 /// adapter/orchestration.
 abstract class LlmPort {
+  /// Charge le modèle / prépare le moteur. Idempotent. À appeler avant
+  /// [generateChat] / [generateChatStream] (le system prompt doit être fixé
+  /// avant cet appel).
+  Future<void> initialize();
+
   /// Le system prompt (persona) injecté de façon stable.
   set systemPrompt(String prompt);
 

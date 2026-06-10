@@ -16,6 +16,9 @@ class MockLlm implements LlmPort {
   String get systemPrompt => _systemPrompt;
 
   @override
+  Future<void> initialize() async {}
+
+  @override
   Future<String> generateChat(String prompt, {String? toolContext}) async =>
       reply;
 

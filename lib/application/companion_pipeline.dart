@@ -77,6 +77,7 @@ class CompanionPipeline {
   Future<void> initialize() async {
     await _stt.initialize();
     await _tts.initialize();
+    await _llm.initialize();
   }
 
   /// Exécute un tour complet à partir des échantillons audio capturés.
