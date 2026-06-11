@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'ui/bootstrap_gate.dart';
+import 'ui/theme/kitt_theme.dart';
 
 void main() {
   runApp(const ProviderScope(child: KittApp()));
@@ -15,9 +16,7 @@ class KittApp extends StatelessWidget {
     return MaterialApp(
       title: 'KITT',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData.dark(
-        useMaterial3: true,
-      ).copyWith(scaffoldBackgroundColor: Colors.black),
+      theme: KittTheme.build(),
       home: const BootstrapGate(),
     );
   }
