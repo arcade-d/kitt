@@ -1,13 +1,18 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../adapters/models/model_catalog.dart';
 import '../application/providers.dart';
+import '../util/byte_format.dart';
+import 'theme/kitt_theme.dart';
 
-/// Écran de téléchargement du **LLM** (première utilisation, mode réel).
+/// Écran de téléchargement du **cerveau (LLM)**, première utilisation, mode réel.
 /// Les voix (STT/TTS) sont embarquées dans l'APK et déjà extraites par
-/// l'installer avant cet écran ; il ne reste que le cerveau à télécharger.
-/// Une fois terminé, invalide [modelsReadyProvider] pour basculer vers
-/// [CompanionScreen].
+/// l'installer avant cet écran ; seul le LLM (GGUF) reste à récupérer, par
+/// chunks parallèles, avec octets reçus / total et débit. Une fois terminé,
+/// invalide [modelsReadyProvider] pour que [BootstrapGate] bascule.
 class ModelDownloadScreen extends ConsumerStatefulWidget {
   const ModelDownloadScreen({super.key});
 
@@ -17,35 +22,69 @@ class ModelDownloadScreen extends ConsumerStatefulWidget {
 }
 
 class _ModelDownloadScreenState extends ConsumerState<ModelDownloadScreen> {
-  double _llmProgress = 0;
+  DownloadProgress _llm = const DownloadProgress(received: 0, total: 0);
+
   bool _hasStarted = false;
   bool _hasError = false;
   String _errorMessage = '';
 
+  // Mesure de débit (octets/s) lissée.
+  double _rate = 0;
+  int _lastBytes = 0;
+  DateTime _lastTick = DateTime.now();
+
+  int get _received => _llm.received;
+  int get _total => _llm.total;
+  double get _fraction => _total > 0 ? (_received / _total).clamp(0.0, 1.0) : 0;
+
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _startDownload());
+    WidgetsBinding.instance.addPostFrameCallback((_) => _startDownloads());
   }
 
-  Future<void> _startDownload() async {
+  void _onProgress(void Function() apply) {
+    if (!mounted) return;
+    setState(() {
+      apply();
+      _updateRate();
+    });
+  }
+
+  void _updateRate() {
+    final now = DateTime.now();
+    final dtMs = now.difference(_lastTick).inMilliseconds;
+    if (dtMs < 200) return; // throttle des recalculs
+    final deltaBytes = _received - _lastBytes;
+    if (deltaBytes > 0) {
+      final instant = deltaBytes / (dtMs / 1000.0);
+      // Lissage exponentiel pour un affichage stable.
+      _rate = _rate == 0 ? instant : _rate * 0.7 + instant * 0.3;
+    }
+    _lastBytes = _received;
+    _lastTick = now;
+  }
+
+  Future<void> _startDownloads() async {
     if (_hasStarted) return;
     _hasStarted = true;
     if (mounted) {
       setState(() {
         _hasError = false;
         _errorMessage = '';
-        _llmProgress = 0;
+        _llm = const DownloadProgress(received: 0, total: 0);
+        _rate = 0;
+        _lastBytes = 0;
+        _lastTick = DateTime.now();
       });
     }
 
     try {
       final mm = await ref.read(modelManagerProvider.future);
       await mm.downloadLlmModel(
-        onProgress: (final double p) {
-          if (mounted) setState(() => _llmProgress = p);
-        },
+        onProgress: (p) => _onProgress(() => _llm = p),
       );
+
       if (mounted) {
         ref.invalidate(modelsReadyProvider);
       }
@@ -62,94 +101,57 @@ class _ModelDownloadScreenState extends ConsumerState<ModelDownloadScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final active = _hasStarted && !_hasError;
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: KittColors.black,
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
+          padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
-              const SizedBox(height: 24),
               const Text(
-                'KITT',
-                style: TextStyle(
-                  color: Color(0xFFFFB000),
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 8,
-                ),
+                'K I T T',
+                textAlign: TextAlign.center,
+                style: KittText.display,
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 6),
+              Text(
+                _hasError
+                    ? 'ANOMALIE DÉTECTÉE'
+                    : (_fraction >= 1.0
+                        ? 'SYSTÈMES OPÉRATIONNELS'
+                        : 'INITIALISATION DU CERVEAU'),
+                textAlign: TextAlign.center,
+                style: KittText.label,
+              ),
+              const SizedBox(height: 6),
               const Text(
-                'Téléchargement du cerveau — première utilisation',
-                style: TextStyle(
-                  color: Colors.white70,
-                  fontSize: 14,
-                  letterSpacing: 1.2,
-                ),
+                'Voix embarquées · seul le cerveau (~830 Mo) se télécharge',
+                textAlign: TextAlign.center,
+                style: KittText.mono,
               ),
-              const SizedBox(height: 8),
-              const Text(
-                'Voix déjà embarquées. Cerveau ≈ 830 Mo — restez en Wi‑Fi.',
-                style: TextStyle(color: Colors.white38, fontSize: 12),
+              const SizedBox(height: 18),
+              _ScannerBar(active: active && _fraction < 1.0),
+              const Spacer(),
+              _ModuleTile(
+                label: 'CERVEAU',
+                subtitle: 'CroissantLLM · GGUF Q4_K_M',
+                progress: _llm,
               ),
-              const SizedBox(height: 40),
-              _ProgressRow(
-                label: 'Cerveau (CroissantLLM)',
-                progress: _llmProgress,
-                done: _llmProgress >= 1.0,
+              const SizedBox(height: 10),
+              Text(
+                _fraction >= 1.0
+                    ? 'Prêt.'
+                    : (active && _fraction < 1.0 ? formatRate(_rate) : '—'),
+                textAlign: TextAlign.center,
+                style: KittText.readout,
               ),
-              const SizedBox(height: 40),
               if (_hasError) ...<Widget>[
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF1A0000),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: const Color(0xFFFF1A1A)),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      const Text(
-                        'Erreur de téléchargement',
-                        style: TextStyle(
-                          color: Color(0xFFFF1A1A),
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        _errorMessage,
-                        style: const TextStyle(
-                          color: Colors.white60,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF1A0000),
-                    foregroundColor: const Color(0xFFFF1A1A),
-                    side: const BorderSide(color: Color(0xFFFF1A1A)),
-                  ),
-                  onPressed: _startDownload,
-                  child: const Text('Réessayer'),
-                ),
-              ] else ...<Widget>[
-                const Text(
-                  'Cerveau (CroissantLLM)',
-                  style: TextStyle(
-                    color: Color(0xFFFFB000),
-                    fontSize: 13,
-                    letterSpacing: 1.5,
-                  ),
-                ),
+                const SizedBox(height: 12),
+                _ErrorPanel(message: _errorMessage, onRetry: _startDownloads),
               ],
+              const Spacer(),
             ],
           ),
         ),
@@ -158,55 +160,272 @@ class _ModelDownloadScreenState extends ConsumerState<ModelDownloadScreen> {
   }
 }
 
-class _ProgressRow extends StatelessWidget {
-  const _ProgressRow({
+/// Le balayage rouge horizontal signature K2000, en mode « barre d'activité ».
+class _ScannerBar extends StatefulWidget {
+  const _ScannerBar({required this.active});
+  final bool active;
+
+  @override
+  State<_ScannerBar> createState() => _ScannerBarState();
+}
+
+class _ScannerBarState extends State<_ScannerBar>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1400),
+  )..repeat(reverse: true);
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 24,
+      child: AnimatedBuilder(
+        animation: _c,
+        builder: (_, __) => CustomPaint(
+          painter: _ScannerPainter(
+            t: 0.5 + 0.5 * math.sin(_c.value * math.pi),
+            active: widget.active,
+          ),
+          size: Size.infinite,
+        ),
+      ),
+    );
+  }
+}
+
+class _ScannerPainter extends CustomPainter {
+  _ScannerPainter({required this.t, required this.active});
+  final double t;
+  final bool active;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final y = size.height / 2;
+    canvas.drawLine(
+      Offset(0, y),
+      Offset(size.width, y),
+      Paint()
+        ..color = KittColors.scarletDim.withValues(alpha: 0.25)
+        ..strokeWidth = 2,
+    );
+    if (!active) return;
+    final x = t * size.width;
+    final w = size.width * 0.16;
+    final glow = Rect.fromCenter(
+      center: Offset(x, y),
+      width: w,
+      height: size.height,
+    );
+    canvas.drawRect(
+      glow,
+      Paint()
+        ..shader = RadialGradient(
+          colors: <Color>[
+            KittColors.scarlet,
+            KittColors.scarlet.withValues(alpha: 0),
+          ],
+        ).createShader(glow)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6),
+    );
+  }
+
+  @override
+  bool shouldRepaint(_ScannerPainter old) => old.t != t || old.active != active;
+}
+
+/// Une ligne module : libellé, sous-titre, ratio d'octets et barre glow animée.
+class _ModuleTile extends StatelessWidget {
+  const _ModuleTile({
     required this.label,
+    required this.subtitle,
     required this.progress,
-    required this.done,
   });
 
   final String label;
-  final double progress;
+  final String subtitle;
+  final DownloadProgress progress;
+
+  @override
+  Widget build(BuildContext context) {
+    final done = progress.isComplete;
+    final pct = (progress.fraction * 100).toStringAsFixed(0);
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+      decoration: BoxDecoration(
+        color: KittColors.panel,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(
+          color: done
+              ? KittColors.amber.withValues(alpha: 0.5)
+              : KittColors.scarletDim.withValues(alpha: 0.6),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              _StatusDot(done: done),
+              const SizedBox(width: 10),
+              Text(label, style: KittText.label),
+              const Spacer(),
+              Text(
+                done ? 'OK' : '$pct %',
+                style: KittText.readout.copyWith(
+                  color: done ? KittColors.amber : KittColors.scarlet,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(subtitle, style: KittText.mono),
+          const SizedBox(height: 10),
+          _GlowBar(fraction: progress.fraction, done: done),
+          const SizedBox(height: 8),
+          Text(
+            formatBytesRatio(progress.received, progress.total),
+            style: KittText.mono,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatusDot extends StatelessWidget {
+  const _StatusDot({required this.done});
   final bool done;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: <Widget>[
-            Text(
-              label,
-              style: TextStyle(
-                color: done ? const Color(0xFFFFB000) : Colors.white70,
-                fontSize: 13,
-                letterSpacing: 1.2,
-              ),
-            ),
-            if (done)
-              const Icon(Icons.check_circle, color: Color(0xFFFFB000), size: 16)
-            else
-              Text(
-                '${(progress * 100).toStringAsFixed(0)} %',
-                style: const TextStyle(color: Colors.white38, fontSize: 12),
-              ),
-          ],
-        ),
-        const SizedBox(height: 6),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(4),
-          child: LinearProgressIndicator(
-            value: progress,
-            backgroundColor: const Color(0xFF1A1A1A),
-            valueColor: AlwaysStoppedAnimation<Color>(
-              done ? const Color(0xFFFFB000) : const Color(0xFFCC8800),
-            ),
-            minHeight: 6,
+    final c = done ? KittColors.amber : KittColors.scarlet;
+    return Container(
+      width: 10,
+      height: 10,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: c,
+        boxShadow: <BoxShadow>[
+          BoxShadow(
+            color: c.withValues(alpha: 0.7),
+            blurRadius: 8,
+            spreadRadius: 1,
           ),
-        ),
-      ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Barre rouge à halo, animée en douceur entre deux valeurs pour rester fluide
+/// même si les paliers d'octets arrivent par à-coups.
+class _GlowBar extends StatelessWidget {
+  const _GlowBar({required this.fraction, required this.done});
+  final double fraction;
+  final bool done;
+
+  @override
+  Widget build(BuildContext context) {
+    final fill = done ? KittColors.amber : KittColors.scarlet;
+    return LayoutBuilder(
+      builder: (_, constraints) {
+        return Container(
+          height: 10,
+          decoration: BoxDecoration(
+            color: Colors.black,
+            borderRadius: BorderRadius.circular(5),
+            border: Border.all(
+              color: KittColors.scarletDim.withValues(alpha: 0.5),
+            ),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: TweenAnimationBuilder<double>(
+              tween: Tween<double>(begin: 0, end: fraction.clamp(0.0, 1.0)),
+              duration: const Duration(milliseconds: 350),
+              curve: Curves.easeOut,
+              builder: (_, v, __) => Container(
+                width: constraints.maxWidth * v,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: <Color>[fill.withValues(alpha: 0.6), fill],
+                  ),
+                  boxShadow: <BoxShadow>[
+                    BoxShadow(
+                      color: fill.withValues(alpha: 0.8),
+                      blurRadius: 8,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _ErrorPanel extends StatelessWidget {
+  const _ErrorPanel({required this.message, required this.onRetry});
+  final String message;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1A0000),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: KittColors.scarlet),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          Text(
+            'Erreur de téléchargement',
+            style: KittText.label.copyWith(color: KittColors.scarlet),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            message,
+            style: KittText.mono,
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 12),
+          GestureDetector(
+            onTap: onRetry,
+            child: Container(
+              height: 44,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: KittColors.scarlet, width: 2),
+                boxShadow: <BoxShadow>[
+                  BoxShadow(
+                    color: KittColors.scarlet.withValues(alpha: 0.4),
+                    blurRadius: 12,
+                  ),
+                ],
+              ),
+              child: Text(
+                'RÉESSAYER',
+                style: KittText.label.copyWith(color: KittColors.scarlet),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

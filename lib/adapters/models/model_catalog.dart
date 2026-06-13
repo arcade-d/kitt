@@ -53,10 +53,13 @@ class ModelStatus {
 }
 
 class HfEntry {
-  const HfEntry({required this.type, required this.path});
+  const HfEntry({required this.type, required this.path, this.size = 0});
 
   final String type;
   final String path;
+
+  /// Taille en octets (champ `size` de l'API HF), 0 pour un dossier.
+  final int size;
 
   bool get isDirectory => type == 'directory';
 }
@@ -67,9 +70,31 @@ List<HfEntry> parseHfTree(String jsonBody) {
   return decoded
       .cast<Map<String, dynamic>>()
       .map(
-        (e) => HfEntry(type: e['type'] as String, path: e['path'] as String),
+        (e) => HfEntry(
+          type: e['type'] as String,
+          path: e['path'] as String,
+          size: (e['size'] as num?)?.toInt() ?? 0,
+        ),
       )
       .toList();
+}
+
+/// Avancement d'un téléchargement, en octets. Permet d'afficher « reçu / total »
+/// et d'agréger plusieurs fichiers/modules.
+class DownloadProgress {
+  const DownloadProgress({required this.received, required this.total});
+
+  /// Octets déjà écrits sur le disque.
+  final int received;
+
+  /// Total attendu en octets ; `0` si encore inconnu.
+  final int total;
+
+  /// Fraction 0–1 ; 0 si le total est inconnu.
+  double get fraction => total > 0 ? (received / total).clamp(0.0, 1.0) : 0.0;
+
+  /// Téléchargement complet (total connu et atteint).
+  bool get isComplete => total > 0 && received >= total;
 }
 
 const ModelInfo sttModel = ModelInfo(

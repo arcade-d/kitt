@@ -25,14 +25,16 @@ void main() {
       );
     });
 
-    test('parseHfTree : JSON tree -> entrées typées', () {
-      const json =
-          '[{"type":"file","path":"fr_dict"},{"type":"directory","path":"sub"}]';
+    test('parseHfTree : JSON tree -> entrées typées avec taille', () {
+      const json = '[{"type":"file","path":"fr_dict","size":1024},'
+          '{"type":"directory","path":"sub"}]';
       final entries = parseHfTree(json);
       expect(entries.length, 2);
       expect(entries[0].isDirectory, isFalse);
       expect(entries[0].path, 'fr_dict');
+      expect(entries[0].size, 1024);
       expect(entries[1].isDirectory, isTrue);
+      expect(entries[1].size, 0);
     });
 
     test('ModelStatus.allReady', () {
@@ -53,6 +55,43 @@ void main() {
         isFalse,
       );
     });
+
+    test('DownloadProgress : fraction et complétion', () {
+      const p = DownloadProgress(received: 50, total: 200);
+      expect(p.fraction, 0.25);
+      expect(p.isComplete, isFalse);
+      const q = DownloadProgress(received: 200, total: 200);
+      expect(q.isComplete, isTrue);
+      const z = DownloadProgress(received: 10, total: 0);
+      expect(z.fraction, 0.0);
+    });
+  });
+
+  group('planChunks', () {
+    test('couvre exactement [0, total-1] sans trou ni chevauchement', () {
+      const total = 1000;
+      final ranges = planChunks(total, 4);
+      expect(ranges.first.start, 0);
+      expect(ranges.last.end, total - 1);
+      var expectedStart = 0;
+      var covered = 0;
+      for (final r in ranges) {
+        expect(r.start, expectedStart);
+        expect(r.end >= r.start, isTrue);
+        covered += r.length;
+        expectedStart = r.end + 1;
+      }
+      expect(covered, total);
+    });
+
+    test('ne dépasse pas le nombre de chunks demandé', () {
+      expect(planChunks(1000, 4).length, lessThanOrEqualTo(4));
+      expect(planChunks(3, 4).length, lessThanOrEqualTo(4));
+    });
+
+    test('taille nulle → aucune plage', () {
+      expect(planChunks(0, 4), isEmpty);
+    });
   });
 
   group('ModelManager', () {
@@ -65,9 +104,11 @@ void main() {
       if (tmp.existsSync()) await tmp.delete(recursive: true);
     });
 
-    ModelManager make({http.Client? client}) => ModelManager(
+    ModelManager make({http.Client? client, int? minChunkBytes}) =>
+        ModelManager(
           baseDirProvider: () async => tmp.path,
           client: client ?? MockClient((_) async => http.Response('', 404)),
+          minChunkBytes: minChunkBytes ?? 8 * 1024 * 1024,
         );
 
     test('chemins dérivés du baseDir', () async {
@@ -105,9 +146,9 @@ void main() {
       ]) {
         File('${mm.sttModelDir}/$f').writeAsStringSync('present');
       }
-      final progress = <double>[];
+      final progress = <DownloadProgress>[];
       await mm.downloadModel(sttModel, onProgress: progress.add);
-      expect(progress.last, 1.0);
+      expect(progress.last.isComplete, isTrue);
     });
 
     test('downloadModel écrit un fichier manquant depuis le réseau', () async {
@@ -148,9 +189,9 @@ void main() {
       );
       await mm.initialize();
       File(mm.llmModelPath).writeAsStringSync('present');
-      final progress = <double>[];
+      final progress = <DownloadProgress>[];
       await mm.downloadLlmModel(onProgress: progress.add);
-      expect(progress.last, 1.0);
+      expect(progress.last.isComplete, isTrue);
     });
 
     test('downloadLlmModel : fallback mono-flux écrit le GGUF', () async {
@@ -161,6 +202,38 @@ void main() {
       await mm.initialize();
       await mm.downloadLlmModel(onProgress: (_) {});
       expect(File(mm.llmModelPath).readAsStringSync(), 'GGUF');
+    });
+
+    test('downloadLlmModel : chunks parallèles assemblent le fichier complet',
+        () async {
+      // Buffer déterministe servi par plages (206 + content-range).
+      final data = List<int>.generate(40, (i) => i % 251);
+      final mm = make(
+        minChunkBytes: 4, // force le découpage en chunks
+        client: MockClient((request) async {
+          final raw = request.headers['range'] ?? request.headers['Range']!;
+          final m = RegExp(r'bytes=(\d+)-(\d+)').firstMatch(raw)!;
+          final a = int.parse(m.group(1)!);
+          final b = int.parse(m.group(2)!);
+          final slice = data.sublist(a, b + 1);
+          return http.Response.bytes(
+            slice,
+            206,
+            headers: <String, String>{
+              'content-range': 'bytes $a-$b/${data.length}',
+            },
+          );
+        }),
+      );
+      await mm.initialize();
+
+      final progress = <DownloadProgress>[];
+      await mm.downloadLlmModel(onProgress: progress.add);
+
+      final written = File(mm.llmModelPath).readAsBytesSync();
+      expect(written.length, data.length);
+      expect(written, data);
+      expect(progress.last.isComplete, isTrue);
     });
   });
 }
