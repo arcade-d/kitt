@@ -79,5 +79,17 @@ void main() {
       expect(reply, isNull);
       await pipeline.dispose();
     });
+
+    test('userHeard émet l’utterance reconnue lors d’un tour', () async {
+      final pipeline = buildPipeline();
+      final heard = <String>[];
+      final sub = pipeline.userHeard.listen(heard.add);
+
+      await pipeline.runTurn(List<double>.filled(160, 0), 16000);
+
+      expect(heard, contains('Bonjour KITT'));
+      await sub.cancel();
+      await pipeline.dispose();
+    });
   });
 }
