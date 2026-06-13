@@ -308,9 +308,9 @@ class CrtOverlayComponent extends PositionComponent
     canvas.drawRect(
       full,
       Paint()
-        ..shader = RadialGradient(
-          colors: const <Color>[Color(0x00000000), Color(0xCC000000)],
-          stops: const <double>[0.65, 1.0],
+        ..shader = const RadialGradient(
+          colors: <Color>[Color(0x00000000), Color(0xCC000000)],
+          stops: <double>[0.65, 1.0],
         ).createShader(full),
     );
   }
