@@ -9,6 +9,7 @@ import '../adapters/mock/mock_llm.dart';
 import '../adapters/mock/mock_stt.dart';
 import '../adapters/mock/mock_tts.dart';
 import '../adapters/mock/mock_wake_word.dart';
+import '../adapters/models/asset_voice_installer.dart';
 import '../adapters/models/model_manager.dart';
 import '../adapters/llama/llama_croissant_llm.dart';
 import '../adapters/sherpa/sherpa_stt.dart';
@@ -62,11 +63,20 @@ final modelManagerProvider = FutureProvider<ModelManager>((ref) async {
   return mm;
 });
 
+/// Installe (extrait) les voix embarquées (STT+TTS) avant usage des adapters
+/// réels. No-op en mode mock. Idempotent.
+final voiceInstallerProvider = FutureProvider<void>((ref) async {
+  if (!kUseRealAdapters) return;
+  final mm = await ref.watch(modelManagerProvider.future);
+  await AssetVoiceInstaller(manager: mm).ensureInstalled();
+});
+
 /// Sélectionne mock ou réel. En mode réel, attend le `ModelManager` pour les
 /// chemins STT/TTS.
 final adaptersProvider = FutureProvider<VoiceAdapters>((ref) async {
   if (kUseRealAdapters) {
     final mm = await ref.watch(modelManagerProvider.future);
+    await ref.watch(voiceInstallerProvider.future);
     return VoiceAdapters(
       stt: SherpaStt(mm.sttModelDir),
       llm: LlamaCroissantLlm(mm.llmModelPath),
@@ -129,5 +139,6 @@ final audioLevelProvider = StreamProvider<double>((ref) async* {
 final modelsReadyProvider = FutureProvider<bool>((ref) async {
   if (!kUseRealAdapters) return true;
   final mm = await ref.watch(modelManagerProvider.future);
-  return mm.getStatus().allReady;
+  await ref.watch(voiceInstallerProvider.future);
+  return mm.isLlmModelAvailable;
 });
