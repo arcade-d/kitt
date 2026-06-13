@@ -58,12 +58,17 @@ class CompanionPipeline {
       StreamController<PipelineState>.broadcast(sync: true);
   final StreamController<String> _partial =
       StreamController<String>.broadcast();
+  final StreamController<String> _userHeard =
+      StreamController<String>.broadcast();
 
   /// Flux des états du pipeline (pour l'UI).
   Stream<PipelineState> get states => _states.stream;
 
   /// Flux des tokens de la réponse en cours (pour l'affichage live).
   Stream<String> get partialResponse => _partial.stream;
+
+  /// Flux de l'utterance reconnue (pour le transcript de l'UI).
+  Stream<String> get userHeard => _userHeard.stream;
 
   PipelineState get state => _machine.state;
 
@@ -106,6 +111,7 @@ class CompanionPipeline {
       }
 
       conversation.addUser(heard.text, sttConfidence: heard.confidence);
+      _userHeard.add(heard.text);
 
       // listening → thinking
       _transition(PipelineEvent.speechEnd);
@@ -163,5 +169,6 @@ class CompanionPipeline {
   Future<void> dispose() async {
     await _states.close();
     await _partial.close();
+    await _userHeard.close();
   }
 }
