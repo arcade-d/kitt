@@ -14,4 +14,13 @@ void main() {
     expect(adapters.tts, isA<MockTts>());
     expect(adapters.audioIn, isA<MockAudioIn>());
   });
+
+  test('voiceInstallerProvider : no-op en mode mock', () async {
+    final container = ProviderContainer();
+    addTearDown(container.dispose);
+    await expectLater(
+      container.read(voiceInstallerProvider.future),
+      completes,
+    );
+  });
 }

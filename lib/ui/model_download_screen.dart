@@ -8,10 +8,11 @@ import '../application/providers.dart';
 import '../util/byte_format.dart';
 import 'theme/kitt_theme.dart';
 
-/// Écran de téléchargement des modèles (première utilisation en mode réel).
-/// Récupère STT → TTS → LLM par chunks parallèles, en affichant pour chaque
-/// module les octets reçus / total, un total agrégé et le débit. Une fois
-/// terminé, invalide [modelsReadyProvider] pour que [BootstrapGate] bascule.
+/// Écran de téléchargement du **cerveau (LLM)**, première utilisation, mode réel.
+/// Les voix (STT/TTS) sont embarquées dans l'APK et déjà extraites par
+/// l'installer avant cet écran ; seul le LLM (GGUF) reste à récupérer, par
+/// chunks parallèles, avec octets reçus / total et débit. Une fois terminé,
+/// invalide [modelsReadyProvider] pour que [BootstrapGate] bascule.
 class ModelDownloadScreen extends ConsumerStatefulWidget {
   const ModelDownloadScreen({super.key});
 
@@ -21,11 +22,8 @@ class ModelDownloadScreen extends ConsumerStatefulWidget {
 }
 
 class _ModelDownloadScreenState extends ConsumerState<ModelDownloadScreen> {
-  DownloadProgress _stt = const DownloadProgress(received: 0, total: 0);
-  DownloadProgress _tts = const DownloadProgress(received: 0, total: 0);
   DownloadProgress _llm = const DownloadProgress(received: 0, total: 0);
 
-  String _currentPhase = 'Initialisation…';
   bool _hasStarted = false;
   bool _hasError = false;
   String _errorMessage = '';
@@ -35,8 +33,8 @@ class _ModelDownloadScreenState extends ConsumerState<ModelDownloadScreen> {
   int _lastBytes = 0;
   DateTime _lastTick = DateTime.now();
 
-  int get _received => _stt.received + _tts.received + _llm.received;
-  int get _total => _stt.total + _tts.total + _llm.total;
+  int get _received => _llm.received;
+  int get _total => _llm.total;
   double get _fraction => _total > 0 ? (_received / _total).clamp(0.0, 1.0) : 0;
 
   @override
@@ -74,8 +72,6 @@ class _ModelDownloadScreenState extends ConsumerState<ModelDownloadScreen> {
       setState(() {
         _hasError = false;
         _errorMessage = '';
-        _stt = const DownloadProgress(received: 0, total: 0);
-        _tts = const DownloadProgress(received: 0, total: 0);
         _llm = const DownloadProgress(received: 0, total: 0);
         _rate = 0;
         _lastBytes = 0;
@@ -85,23 +81,6 @@ class _ModelDownloadScreenState extends ConsumerState<ModelDownloadScreen> {
 
     try {
       final mm = await ref.read(modelManagerProvider.future);
-
-      if (!mounted) return;
-      setState(() => _currentPhase = 'Reconnaissance vocale');
-      await mm.downloadModel(
-        sttModel,
-        onProgress: (p) => _onProgress(() => _stt = p),
-      );
-
-      if (!mounted) return;
-      setState(() => _currentPhase = 'Synthèse vocale');
-      await mm.downloadModel(
-        ttsModel,
-        onProgress: (p) => _onProgress(() => _tts = p),
-      );
-
-      if (!mounted) return;
-      setState(() => _currentPhase = 'Cerveau (CroissantLLM)');
       await mm.downloadLlmModel(
         onProgress: (p) => _onProgress(() => _llm = p),
       );
@@ -142,49 +121,37 @@ class _ModelDownloadScreenState extends ConsumerState<ModelDownloadScreen> {
                     ? 'ANOMALIE DÉTECTÉE'
                     : (_fraction >= 1.0
                         ? 'SYSTÈMES OPÉRATIONNELS'
-                        : 'INITIALISATION DES MODULES'),
+                        : 'INITIALISATION DU CERVEAU'),
                 textAlign: TextAlign.center,
                 style: KittText.label,
               ),
+              const SizedBox(height: 6),
+              const Text(
+                'Voix embarquées · seul le cerveau (~830 Mo) se télécharge',
+                textAlign: TextAlign.center,
+                style: KittText.mono,
+              ),
               const SizedBox(height: 18),
               _ScannerBar(active: active && _fraction < 1.0),
-              const SizedBox(height: 22),
-              Expanded(
-                child: ListView(
-                  children: <Widget>[
-                    _ModuleTile(
-                      label: 'OREILLE',
-                      subtitle: 'Reconnaissance vocale · zipformer FR',
-                      progress: _stt,
-                    ),
-                    const SizedBox(height: 14),
-                    _ModuleTile(
-                      label: 'VOIX',
-                      subtitle: 'Synthèse vocale · VITS/Piper FR',
-                      progress: _tts,
-                    ),
-                    const SizedBox(height: 14),
-                    _ModuleTile(
-                      label: 'CERVEAU',
-                      subtitle: 'CroissantLLM · GGUF Q4_K_M',
-                      progress: _llm,
-                    ),
-                  ],
-                ),
+              const Spacer(),
+              _ModuleTile(
+                label: 'CERVEAU',
+                subtitle: 'CroissantLLM · GGUF Q4_K_M',
+                progress: _llm,
               ),
-              const SizedBox(height: 12),
-              _TotalPanel(
-                received: _received,
-                total: _total,
-                fraction: _fraction,
-                rate: _rate,
-                phase: _currentPhase,
-                active: active,
+              const SizedBox(height: 10),
+              Text(
+                _fraction >= 1.0
+                    ? 'Prêt.'
+                    : (active && _fraction < 1.0 ? formatRate(_rate) : '—'),
+                textAlign: TextAlign.center,
+                style: KittText.readout,
               ),
               if (_hasError) ...<Widget>[
                 const SizedBox(height: 12),
                 _ErrorPanel(message: _errorMessage, onRetry: _startDownloads),
               ],
+              const Spacer(),
             ],
           ),
         ),
@@ -403,67 +370,6 @@ class _GlowBar extends StatelessWidget {
           ),
         );
       },
-    );
-  }
-}
-
-/// Panneau de synthèse : total reçu / total, débit, phase et barre globale.
-class _TotalPanel extends StatelessWidget {
-  const _TotalPanel({
-    required this.received,
-    required this.total,
-    required this.fraction,
-    required this.rate,
-    required this.phase,
-    required this.active,
-  });
-
-  final int received;
-  final int total;
-  final double fraction;
-  final double rate;
-  final String phase;
-  final bool active;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: KittColors.panel,
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: KittColors.amber.withValues(alpha: 0.4)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: <Widget>[
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: <Widget>[
-              const Text('TOTAL', style: KittText.label),
-              Text(
-                '${(fraction * 100).toStringAsFixed(0)} %',
-                style: KittText.readout,
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          _GlowBar(fraction: fraction, done: fraction >= 1.0),
-          const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: <Widget>[
-              Text(formatBytesRatio(received, total), style: KittText.readout),
-              Text(
-                active && fraction < 1.0 ? formatRate(rate) : '—',
-                style: KittText.readout,
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text(fraction >= 1.0 ? 'Prêt.' : phase, style: KittText.mono),
-        ],
-      ),
     );
   }
 }
