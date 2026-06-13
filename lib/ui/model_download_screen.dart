@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../adapters/models/model_catalog.dart';
 import '../application/providers.dart';
 
-/// Écran de téléchargement des modèles (première utilisation en mode réel).
-/// Télécharge STT → TTS → LLM séquentiellement avec barres de progression.
-/// Une fois terminé, invalide [modelsReadyProvider] pour que [BootstrapGate]
-/// bascule vers [CompanionScreen].
+/// Écran de téléchargement du **LLM** (première utilisation, mode réel).
+/// Les voix (STT/TTS) sont embarquées dans l'APK et déjà extraites par
+/// l'installer avant cet écran ; il ne reste que le cerveau à télécharger.
+/// Une fois terminé, invalide [modelsReadyProvider] pour basculer vers
+/// [CompanionScreen].
 class ModelDownloadScreen extends ConsumerStatefulWidget {
   const ModelDownloadScreen({super.key});
 
@@ -17,11 +17,7 @@ class ModelDownloadScreen extends ConsumerStatefulWidget {
 }
 
 class _ModelDownloadScreenState extends ConsumerState<ModelDownloadScreen> {
-  double _sttProgress = 0;
-  double _ttsProgress = 0;
   double _llmProgress = 0;
-
-  String _currentPhase = 'Initialisation…';
   bool _hasStarted = false;
   bool _hasError = false;
   String _errorMessage = '';
@@ -29,56 +25,27 @@ class _ModelDownloadScreenState extends ConsumerState<ModelDownloadScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _startDownloads());
+    WidgetsBinding.instance.addPostFrameCallback((_) => _startDownload());
   }
 
-  Future<void> _startDownloads() async {
+  Future<void> _startDownload() async {
     if (_hasStarted) return;
     _hasStarted = true;
     if (mounted) {
       setState(() {
         _hasError = false;
         _errorMessage = '';
-        _sttProgress = 0;
-        _ttsProgress = 0;
         _llmProgress = 0;
       });
     }
 
     try {
       final mm = await ref.read(modelManagerProvider.future);
-
-      if (!mounted) return;
-      setState(() => _currentPhase = 'Reconnaissance vocale');
-
-      await mm.downloadModel(
-        sttModel,
-        onProgress: (final double p) {
-          if (mounted) setState(() => _sttProgress = p);
-        },
-      );
-
-      if (!mounted) return;
-      setState(() => _ttsProgress = 0);
-      setState(() => _currentPhase = 'Synthèse vocale');
-
-      await mm.downloadModel(
-        ttsModel,
-        onProgress: (final double p) {
-          if (mounted) setState(() => _ttsProgress = p);
-        },
-      );
-
-      if (!mounted) return;
-      setState(() => _llmProgress = 0);
-      setState(() => _currentPhase = 'Cerveau (CroissantLLM)');
-
       await mm.downloadLlmModel(
         onProgress: (final double p) {
           if (mounted) setState(() => _llmProgress = p);
         },
       );
-
       if (mounted) {
         ref.invalidate(modelsReadyProvider);
       }
@@ -115,7 +82,7 @@ class _ModelDownloadScreenState extends ConsumerState<ModelDownloadScreen> {
               ),
               const SizedBox(height: 8),
               const Text(
-                'Téléchargement des modèles — première utilisation',
+                'Téléchargement du cerveau — première utilisation',
                 style: TextStyle(
                   color: Colors.white70,
                   fontSize: 14,
@@ -124,25 +91,10 @@ class _ModelDownloadScreenState extends ConsumerState<ModelDownloadScreen> {
               ),
               const SizedBox(height: 8),
               const Text(
-                'Environ 2–3 Go au total. Restez connecté en Wi‑Fi.',
-                style: TextStyle(
-                  color: Colors.white38,
-                  fontSize: 12,
-                ),
+                'Voix déjà embarquées. Cerveau ≈ 830 Mo — restez en Wi‑Fi.',
+                style: TextStyle(color: Colors.white38, fontSize: 12),
               ),
               const SizedBox(height: 40),
-              _ProgressRow(
-                label: 'Reconnaissance vocale',
-                progress: _sttProgress,
-                done: _sttProgress >= 1.0,
-              ),
-              const SizedBox(height: 24),
-              _ProgressRow(
-                label: 'Synthèse vocale',
-                progress: _ttsProgress,
-                done: _ttsProgress >= 1.0,
-              ),
-              const SizedBox(height: 24),
               _ProgressRow(
                 label: 'Cerveau (CroissantLLM)',
                 progress: _llmProgress,
@@ -185,18 +137,13 @@ class _ModelDownloadScreenState extends ConsumerState<ModelDownloadScreen> {
                     foregroundColor: const Color(0xFFFF1A1A),
                     side: const BorderSide(color: Color(0xFFFF1A1A)),
                   ),
-                  onPressed: _startDownloads,
+                  onPressed: _startDownload,
                   child: const Text('Réessayer'),
                 ),
-              ] else if (!_hasStarted) ...<Widget>[
-                const Text(
-                  'Prêt à télécharger.',
-                  style: TextStyle(color: Colors.white38, fontSize: 12),
-                ),
               ] else ...<Widget>[
-                Text(
-                  _currentPhase,
-                  style: const TextStyle(
+                const Text(
+                  'Cerveau (CroissantLLM)',
+                  style: TextStyle(
                     color: Color(0xFFFFB000),
                     fontSize: 13,
                     letterSpacing: 1.5,
@@ -243,10 +190,7 @@ class _ProgressRow extends StatelessWidget {
             else
               Text(
                 '${(progress * 100).toStringAsFixed(0)} %',
-                style: const TextStyle(
-                  color: Colors.white38,
-                  fontSize: 12,
-                ),
+                style: const TextStyle(color: Colors.white38, fontSize: 12),
               ),
           ],
         ),
