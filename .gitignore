@@ -14,7 +14,13 @@ pubspec.lock
 # OS
 .DS_Store
 
-# Modèles (poids) — ne JAMAIS committer (cf. débrief §7)
-assets/models/
+# Modèles (poids) — ne JAMAIS committer (cf. débrief §7).
+# Le dossier assets/models/ est conservé (via .gitkeep) : les voix STT/TTS y
+# sont récupérées en CI au build (assets/models/voice.tar), jamais commitées.
+assets/models/*
+!assets/models/.gitkeep
 *.gguf
 *.onnx
+
+# Visual companion (brainstorming)
+.superpowers/
