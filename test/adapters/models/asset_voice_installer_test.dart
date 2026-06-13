@@ -39,7 +39,7 @@ void main() {
           '-C',
           stage.path,
           'stt',
-          'tts'
+          'tts',
         ],
       );
       expect(res.exitCode, 0, reason: res.stderr.toString());
