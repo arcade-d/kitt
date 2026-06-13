@@ -23,9 +23,13 @@ class _CompanionScreenState extends ConsumerState<CompanionScreen> {
     PipelineState.idle,
   );
   final ValueNotifier<double> _level = ValueNotifier<double>(0);
+  final ValueNotifier<String> _userText = ValueNotifier<String>('');
+  final ValueNotifier<String> _responseText = ValueNotifier<String>('');
   late final KittGame _game = KittGame(
     stateListenable: _state,
     levelListenable: _level,
+    userTextListenable: _userText,
+    responseTextListenable: _responseText,
   );
 
   // --- Capture state ---
@@ -39,6 +43,8 @@ class _CompanionScreenState extends ConsumerState<CompanionScreen> {
     _capSub?.cancel();
     _state.dispose();
     _level.dispose();
+    _userText.dispose();
+    _responseText.dispose();
     super.dispose();
   }
 
@@ -156,6 +162,15 @@ class _CompanionScreenState extends ConsumerState<CompanionScreen> {
     });
     ref.listen<AsyncValue<double>>(audioLevelProvider, (_, next) {
       next.whenData((l) => _level.value = l);
+    });
+    ref.listen<AsyncValue<String>>(userHeardProvider, (_, next) {
+      next.whenData((t) {
+        _userText.value = t;
+        _responseText.value = '';
+      });
+    });
+    ref.listen<AsyncValue<String>>(responseTokenProvider, (_, next) {
+      next.whenData((tok) => _responseText.value += tok);
     });
 
     final AsyncValue<PipelineState> state = ref.watch(pipelineStateProvider);
