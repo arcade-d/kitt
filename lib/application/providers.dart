@@ -135,6 +135,18 @@ final audioLevelProvider = StreamProvider<double>((ref) async* {
   yield* adapters.audioIn.audioLevel;
 });
 
+/// Utterance reconnue (pour le transcript). Émet à chaque tour exploitable.
+final userHeardProvider = StreamProvider<String>((ref) async* {
+  final pipeline = await ref.watch(pipelineProvider.future);
+  yield* pipeline.userHeard;
+});
+
+/// Tokens de la réponse de KITT en flux (téléscripteur).
+final responseTokenProvider = StreamProvider<String>((ref) async* {
+  final pipeline = await ref.watch(pipelineProvider.future);
+  yield* pipeline.partialResponse;
+});
+
 /// Vrai si les modèles requis sont présents (toujours vrai en mode mock).
 final modelsReadyProvider = FutureProvider<bool>((ref) async {
   if (!kUseRealAdapters) return true;
